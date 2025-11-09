@@ -127,7 +127,7 @@ end
 function check_regression_case(case)
     (; file, thrust, current, ion_current) = case
 
-    return @testset "$(file)" begin
+    @testset "$(file)" begin
         println("======================================")
         println("        \"$(file)\"                   ")
         println("======================================")
@@ -149,6 +149,16 @@ function check_regression_case(case)
         avg_start = nsave ÷ 3
         n_avg = nsave - avg_start
         avg = het.time_average(sol, avg_start)
+
+        ϕ = avg[:ϕ][]
+        Tev = avg[:Tev][]
+
+        # Check potential boundary condition
+        @test ϕ[end] ≈ avg.config.cathode_coupling_voltage atol = 0.01
+
+        # Check temperature boundary condition
+        diff = abs(Tev[end] - Tev[end-1])
+        @test Tev[end] ≈ avg.config.cathode_Tev atol = 0.2 * diff
 
         T = het.thrust(sol) .* 1000
         T = [het.thrust(sol, i) for i in avg_start:nsave] .* 1000
@@ -253,4 +263,6 @@ function check_regression_case(case)
         @printf("),\n")
         println("-----")
     end
+
+    return
 end

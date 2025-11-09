@@ -13,9 +13,12 @@ Effective frequency of electron scattering caused by collisions with neutrals of
 """
 function freq_electron_neutral!(νen::Vector{T}, coll::ElasticCollision, fluid::FluidContainer, Tev::Vector{T}) where {T <: Number}
     inv_m = inv(fluid.species.element.m)
-    @inbounds for i in eachindex(νen)
+    @inbounds for i in interior_cells(νen)
         νen[i] += freq_electron_neutral(coll, fluid.density[i] * inv_m, Tev[i])
     end
+    # Extrapolate collision frequencies to ghost cells
+    νen[1] = νen[2] - (νen[2] - νen[3])
+    νen[end] = νen[end-1] + (νen[end-1] - νen[end-2])
     return νen
 end
 
@@ -30,9 +33,13 @@ end
 function freq_electron_ion!(
         νei::Vector{T}, ne::Vector{T}, Tev::Vector{T}, Z::Vector{T},
     ) where {T <: Number}
-    return @inbounds for i in eachindex(νei)
+    @inbounds for i in interior_cells(νei)
         νei[i] = freq_electron_ion(ne[i], Tev[i], Z[i])
     end
+    # Extrapolate collision frequencies to ghost cells
+    νei[1] = νei[2] - (νei[2] - νei[3])
+    νei[end] = νei[end-1] + (νei[end-1] - νei[end-2])
+    return
 end
 
 """
@@ -51,9 +58,11 @@ function freq_electron_classical!(
         return
     end
 
-    return @inbounds for i in eachindex(νc)
+    @inbounds for i in eachindex(νc)
         νc[i] += νiz[i] + νex[i]
     end
+
+    return
 end
 
 """

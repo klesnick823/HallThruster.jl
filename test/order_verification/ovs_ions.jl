@@ -99,11 +99,9 @@ function solve_ions(ncells, reconstruct; t_end = 1.0e-4)
     )
 
     params = het.setup_simulation(config, simparams)
-    # Need to overwrite min_Te b/c here Te can be lower than Te_L or Te_R
     z_cell = params.grid.cell_centers
     z_start = z_cell[1]
     z_end = z_cell[end]
-    @reset params.min_Te = 0.01 * 2 / 3 * min(ϵ_func(z_start), ϵ_func(z_end))
     (; cache, grid) = params
 
     # Allocate arrays and fill variables

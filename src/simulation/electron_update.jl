@@ -1,11 +1,10 @@
 # update useful quantities relevant for potential, electron energy and fluid solve
 function update_electrons!(params, config, t = 0)
-    (; Tev, pe, ne, nϵ, νan, νc, νen, νei, radial_loss_frequency, Z_eff, νiz, νex, νew_momentum, κ) = params.cache
+    (; Tev, ne, nϵ, νan, νc, νen, νei, radial_loss_frequency, Z_eff, νiz, νex, νew_momentum, κ) = params.cache
     (; source_energy, wall_loss_model, conductivity_model, anom_model) = config
 
-    # Update electron temperature and pressure given new density
-    update_temperature!(Tev, nϵ, ne, params.min_Te)
-    update_pressure!(pe, nϵ, params.landmark)
+    # Update electron temperature given new density
+    update_temperature!(Tev, nϵ, ne)
 
     # Update collision frequencies
     if (params.electron_ion_collisions)
@@ -25,14 +24,16 @@ function update_electrons!(params, config, t = 0)
     # Update anomalous transport
     t > 0 && anom_model(νan, params, config)
 
-    # Update mobility, discharge current, potential, and more
+    # Update mobility, discharge current, potential, and electron velocity
     update_electrical_vars!(params)
 
-    #update thermal conductivity
+    # update the thermal conductivity
     conductivity_model(κ, params)
 
-    # Update the electron temperature and pressure
-    return update_electron_energy!(params, wall_loss_model, source_energy, params.dt[])
+    # Update the electron energy density,  temperature and pressure
+    update_electron_energy!(params, wall_loss_model, source_energy, params.dt[])
+
+    return
 end
 
 function freq_electron_wall!(radial_loss_frequency, νew_momentum, wall_loss_model, params)
@@ -62,6 +63,13 @@ function update_electrical_vars!(params)
         smooth!(νan, cell_cache_1, iters = anom_smoothing_iters)
     end
 
+    # Update the anomalous collision frequency multiplier to match target current
+    anom_multiplier[] = exp(
+        apply_controller(
+            params.simulation.current_control, Id[], log(anom_multiplier[]), params.dt[],
+        )
+    )
+
     @inbounds for i in eachindex(νan)
         # Multiply by anom anom multiplier for PID control
         νan[i] *= anom_multiplier[]
@@ -72,20 +80,20 @@ function update_electrical_vars!(params)
     end
 
     # Compute anode sheath potential
+    # TODO: should this go here?
     Vs[] = anode_sheath_potential(params)
 
     # Compute the discharge current by integrating the momentum equation over the whole domain
     V_L = params.discharge_voltage + Vs[]
     V_R = params.cathode_coupling_voltage
+
     apply_drag = !landmark && params.iteration[] > 5
+
     Id[] = integrate_discharge_current(grid, cache, V_L, V_R, apply_drag)
 
-    # Update the anomalous collision frequency multiplier to match target current
-    anom_multiplier[] = exp(
-        apply_controller(
-            params.simulation.current_control, Id[], log(anom_multiplier[]), params.dt[],
-        )
-    )
+    # Compute electric field and potential
+    update_electric_field!(∇ϕ, cache, apply_drag)
+    integrate_potential!(ϕ, ∇ϕ, grid, V_L)
 
     # Compute the electron velocity and electron kinetic energy
     @inbounds for i in eachindex(ue)
@@ -95,47 +103,56 @@ function update_electrical_vars!(params)
 
     # Kinetic energy in both axial and azimuthal directions is accounted for
     electron_kinetic_energy!(K, νe, B, ue)
-
-    # Compute potential gradient and pressure gradient
-    compute_pressure_gradient!(∇pe, pe, grid.cell_centers)
-
-    # Compute electric field
-    compute_electric_field!(∇ϕ, cache, apply_drag)
-
-    # Update electrostatic potential
-    return cumtrapz!(ϕ, grid.cell_centers, ∇ϕ, params.discharge_voltage + Vs[])
+    return
 end
 
 # Compute the axially-constant discharge current using Ohm's law
 function integrate_discharge_current(grid, cache, V_L, V_R, apply_drag)
     (; ∇pe, μ, ne, ji, channel_area, avg_neutral_vel, avg_ion_vel, νei, νen, νan) = cache
 
-    ncells = length(grid.cell_centers)
+    # Compute integrands at all cell centers
+    integrand_1 = cache.cell_cache_1
+    integrand_2 = cache.cell_cache_2
 
-    int1 = 0.0
-    int2 = 0.0
-
-    @inbounds for i in 1:(ncells - 1)
-        Δz = grid.dz_edge[i]
-
-        int1_1 = (ji[i] / e / μ[i] + ∇pe[i]) / ne[i]
-        int1_2 = (ji[i + 1] / e / μ[i + 1] + ∇pe[i + 1]) / ne[i + 1]
+    @inbounds for i in eachindex(grid.cell_centers)
+        integrand_1[i] = (ji[i] / e / μ[i] + ∇pe[i]) / ne[i]
+        integrand_2[i] = inv(e * ne[i] * μ[i] * channel_area[i])
 
         if (apply_drag)
             ion_drag_1 = avg_ion_vel[i] * (νei[i] + νan[i]) * me / e
-            ion_drag_2 = avg_ion_vel[i + 1] * (νei[i + 1] + νan[i + 1]) * me / e
             neutral_drag_1 = avg_neutral_vel[i] * νen[i] * me / e
-            neutral_drag_2 = avg_ion_vel[i + 1] * νen[i + 1] * me / e
-            int1_1 -= ion_drag_1 + neutral_drag_1
-            int1_2 -= ion_drag_2 + neutral_drag_2
+            integrand_1[i] -= ion_drag_1 + neutral_drag_1
+        end
+    end
+
+    # Replace left and right values with edge values
+    integrand_1[1] = 0.5 * (integrand_1[1] + integrand_1[2])
+    integrand_1[end] = 0.5 * (integrand_1[end-1] + integrand_1[end])
+    integrand_2[1] = 0.5 * (integrand_2[1] + integrand_2[2])
+    integrand_2[end] = 0.5 * (integrand_2[end-1] + integrand_2[end])
+
+    # Compute integrals using trapezoidal rule around edges
+    int1 = 0.0
+    int2 = 0.0
+    @inbounds for (i, z_edge) in enumerate(grid.edges)
+        zL = grid.cell_centers[i]
+        zR = grid.cell_centers[i+1]
+
+        f1_L = integrand_1[i]
+        f1_R = integrand_1[i+1]
+
+        f2_L = integrand_2[i]
+        f2_R = integrand_2[i+1]
+
+        # account for boundary cells
+        if i == 1 || i == length(grid.edges)
+            zL = z_edge
+        elseif i == length(grid.edges)
+            zR = z_edge
         end
 
-        int1 += 0.5 * Δz * (int1_1 + int1_2)
-
-        int2_1 = inv(e * ne[i] * μ[i] * channel_area[i])
-        int2_2 = inv(e * ne[i + 1] * μ[i + 1] * channel_area[i + 1])
-
-        int2 += 0.5 * Δz * (int2_1 + int2_2)
+        int1 += 0.5 * (zR - zL) * (f1_L + f1_R)
+        int2 += 0.5 * (zR - zL) * (f2_L + f2_R)
     end
 
     ΔV = V_L - V_R
@@ -152,26 +169,4 @@ function electron_kinetic_energy!(K, νe, B, ue)
     #   = 1/2 me (1 + Ωe^2) ue^2
     #   divide by e to get units of eV
     return @. K = 0.5 * me * (1 + (e * B / me / νe)^2) * ue^2 / e
-end
-
-function compute_pressure_gradient!(∇pe, pe, z_cell)
-    ncells = length(z_cell)
-
-    # Pressure gradient (forward)
-    ∇pe[1] = forward_difference(pe[1], pe[2], pe[3], z_cell[1], z_cell[2], z_cell[3])
-
-    # Centered difference in interior cells
-    @inbounds for j in 2:(ncells - 1)
-        # Compute pressure gradient
-        ∇pe[j] = central_difference(
-            pe[j - 1], pe[j], pe[j + 1], z_cell[j - 1], z_cell[j], z_cell[j + 1],
-        )
-    end
-
-    # pressure gradient (backward)
-    ∇pe[end] = backward_difference(
-        pe[end - 2], pe[end - 1], pe[end], z_cell[end - 2], z_cell[end - 1], z_cell[end],
-    )
-
-    return nothing
 end

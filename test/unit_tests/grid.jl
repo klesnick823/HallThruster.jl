@@ -37,8 +37,10 @@ function test_grid_invariants(spec, grid, dom)
         @test length(grid.cell_centers) == n + 2
         @test grid.edges[1] == dom[1]
         @test grid.edges[end] == dom[end]
-        @test grid.cell_centers[1] == grid.edges[1]
-        @test grid.cell_centers[end] == grid.edges[end]
+
+
+        @test grid.cell_centers[1] == grid.edges[1] + (grid.edges[1] - grid.cell_centers[2])
+        @test grid.cell_centers[end] == grid.edges[end] + (grid.edges[end] - grid.cell_centers[end-1])
 
         @test all(
             grid.cell_centers[i] == 0.5 * (grid.edges[i] + grid.edges[i - 1])
@@ -61,8 +63,8 @@ function test_even_grid()
         @testset "Spacing" begin
             @test all(dz_cell .≈ dz_cell[1])
             @test all(dz_edge[2:(end - 1)] .≈ dz_edge[2])
-            @test dz_edge[1] == 0.5 * dz_edge[2]
-            @test dz_edge[end] == 0.5 * dz_edge[end - 1]
+            @test dz_edge[1] == dz_edge[2]
+            @test dz_edge[end] == dz_edge[end - 1]
         end
     end
 end

@@ -24,6 +24,33 @@ struct SpeciesState
     end
 end
 
+function remove_ghosts!(arr)
+    c1, c2 = arr[1], arr[2]
+    c3, c4 = arr[end-1], arr[end]
+    arr[1] = 0.5 * (c1 + c2)
+    arr[end] = 0.5 * (c3 + c4)
+    return arr
+end
+
+function remove_ghosts!(s::SpeciesState)
+    remove_ghosts!(s.n)
+    remove_ghosts!(s.nu)
+    remove_ghosts!(s.u)
+    return s
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Copy an array, then replace its first and last values with the average of the first two and last two cells, respectively
+This effectively turns these into edge values, rather than ghost cell values.
+"""
+function copy_and_remove_ghosts(arr)
+    copied = copy(arr)
+    remove_ghosts!(copied)
+    return copied
+end
+
 function _get_species_states(fluids_by_propellant)
     neutrals = OrderedDict{Symbol, SpeciesState}()
     ions = OrderedDict{Symbol, Vector{SpeciesState}}()
@@ -38,6 +65,7 @@ function _get_species_states(fluids_by_propellant)
         @. neutral_state.n = continuity.density * inv_m
         @. neutral_state.u = continuity.const_velocity
         @. neutral_state.nu = neutral_state.n * neutral_state.u
+        remove_ghosts!(neutral_state)
         neutrals[symbol] = neutral_state
 
         ion_states = SpeciesState[]
@@ -46,6 +74,7 @@ function _get_species_states(fluids_by_propellant)
             @. ion_state.n = ion.density * inv_m
             @. ion_state.nu = ion.momentum * inv_m
             @. ion_state.u = ion.momentum / ion.density
+            remove_ghosts!(ion_state)
             push!(ion_states, ion_state)
         end
         ions[symbol] = ion_states
@@ -127,28 +156,28 @@ function Frame(fluids_by_propellant, cache)
     return Frame(;
         neutrals,
         ions,
-        B = copy(cache.B),
-        ne = copy(cache.ne),
-        ue = copy(cache.ue),
-        ji = copy(cache.ji),
-        E = -copy(cache.∇ϕ),
-        Tev = copy(cache.Tev),
-        pe = copy(cache.pe),
-        grad_pe = copy(cache.∇pe),
-        potential = copy(cache.ϕ),
-        mobility = copy(cache.μ),
-        nu_an = copy(cache.νan),
-        nu_en = copy(cache.νen),
-        nu_ei = copy(cache.νei),
-        nu_wall = copy(cache.νew_momentum),
-        nu_class = copy(cache.νc),
-        nu_iz = copy(cache.νiz),
-        nu_ex = copy(cache.νex),
-        nu_e = copy(cache.νe),
-        channel_area = copy(cache.channel_area),
-        dA_dz = copy(cache.dA_dz),
-        tan_div_angle = copy(cache.tanδ),
-        anom_variables = [copy(var) for var in cache.anom_variables],
+        B = copy_and_remove_ghosts(cache.B),
+        ne = copy_and_remove_ghosts(cache.ne),
+        ue = copy_and_remove_ghosts(cache.ue),
+        ji = copy_and_remove_ghosts(cache.ji),
+        E = -copy_and_remove_ghosts(cache.∇ϕ),
+        Tev = copy_and_remove_ghosts(cache.Tev),
+        pe = copy_and_remove_ghosts(cache.pe),
+        grad_pe = copy_and_remove_ghosts(cache.∇pe),
+        potential = copy_and_remove_ghosts(cache.ϕ),
+        mobility = copy_and_remove_ghosts(cache.μ),
+        nu_an = copy_and_remove_ghosts(cache.νan),
+        nu_en = copy_and_remove_ghosts(cache.νen),
+        nu_ei = copy_and_remove_ghosts(cache.νei),
+        nu_wall = copy_and_remove_ghosts(cache.νew_momentum),
+        nu_class = copy_and_remove_ghosts(cache.νc),
+        nu_iz = copy_and_remove_ghosts(cache.νiz),
+        nu_ex = copy_and_remove_ghosts(cache.νex),
+        nu_e = copy_and_remove_ghosts(cache.νe),
+        channel_area = copy_and_remove_ghosts(cache.channel_area),
+        dA_dz = copy_and_remove_ghosts(cache.dA_dz),
+        tan_div_angle = copy_and_remove_ghosts(cache.tanδ),
+        anom_variables = [copy_and_remove_ghosts(var) for var in cache.anom_variables],
         anom_multiplier = fill(cache.anom_multiplier[]),
         discharge_current = fill(cache.Id[]),
         dt = fill(cache.dt[]),
@@ -161,6 +190,10 @@ $(TYPEDEF)
 The solution of a simulation, returned by `run_simulation`.
 These can be passed to any of the postprocessing functions described in [Postprocessing](@ref),
 or indexed to extract specific values.
+
+# Grid
+The grid can be accessed with the `grid` field. This contains the cell centers of the simulation, 
+with the exception of the first and last values. These instead represent the values a the left- and rightmost edges.
 
 # Indexing
 There are a few ways to index a solution.
@@ -214,7 +247,7 @@ struct Solution{T, C <: Config, CC <: CurrentController}
     """
     The grid used for the simulation
     """
-    grid::Grid1D
+    grid::Vector{Float64}
     """
     The `Config` used to run the simulation
     """
@@ -389,7 +422,7 @@ function Base.getindex(sol::Solution, field::Symbol)
     elseif field == :ωce || field == :cyclotron_freq || field == :omega_ce
         return @. e * sol.frames[1].B / me
     elseif field == :z
-        return sol.grid.cell_centers
+        return sol.grid
     end
 
     # Heavy species properties (backwards compatibility)
@@ -400,7 +433,7 @@ function Base.getindex(sol::Solution, field::Symbol)
     symbol = sol.config.propellants[1].gas.short_name
     ncharge = sol.config.propellants[1].max_charge
 
-    ncells = length(sol.grid.cell_centers)
+    ncells = length(sol.grid)
 
     if field == :nn
         return [frame.neutrals[symbol].n for frame in sol.frames]
@@ -525,30 +558,9 @@ function solve(params, config, tspan; saveat)
             end
 
             # # Save values at designated intervals
-            # # TODO interpolate these to be exact and make a bit more elegant
+            # # TODO interpolate these to exact times
             if t > saveat[save_ind]
-                #     # save vector fields
-                #     for field in _saved_fields_vector()
-                #         if field == :anom_variables
-                #             for i in 1:num_anom_variables(config.anom_model)
-                #                 frames[save_ind][field][i] .= params.cache[field][i]
-                #             end
-                #         else
-                #             cached_field::Vector{Float64} = params.cache[field]
-                #             sv::Vector{Float64} = frames[save_ind][field]
-                #             sv .= cached_field
-                #         end
-                #     end
-
-                #     # save matrix fields
-                #     for field in _saved_fields_matrix()
-                #         cached_field::Matrix{Float64} = params.cache[field]
-                #         sv::Matrix{Float64} = frames[save_ind][field]
-                #         sv .= cached_field
-                #     end
-
                 push!(frames, Frame(params.fluids_by_propellant, params.cache))
-
                 save_ind += 1
             end
 
@@ -566,7 +578,7 @@ function solve(params, config, tspan; saveat)
     return Solution(
         saveat[1:ind],
         frames[1:ind],
-        params.grid,
+        copy_and_remove_ghosts(params.grid.cell_centers),
         config,
         params.simulation,
         params.postprocess,

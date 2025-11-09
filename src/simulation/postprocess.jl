@@ -162,7 +162,6 @@ anode_eff(sol::Solution) = [anode_eff(sol, frame) for frame in eachindex(sol.fra
 Compute the voltage/acceleration efficiency at a specific frame of a `Solution`.
 """
 function voltage_eff(sol::Solution, frame::Integer)
-    # TODO: multiple props + containers
     Vd = sol.config.discharge_voltage
     f = sol.frames[frame]
     ni_end = 0.0

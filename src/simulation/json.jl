@@ -52,7 +52,6 @@ end
 Convert one frame of a `Solution` to an `OrderedDict`
 """
 function frame_dict(sol::Solution, frame::Integer)
-    # TODO: multiple propellants
     f = sol.frames[frame]
     d = OrderedDict{String, Any}()
     d["thrust"] = thrust(sol, frame)
@@ -64,7 +63,7 @@ function frame_dict(sol::Solution, frame::Integer)
     d["divergence_eff"] = divergence_eff(sol, frame)
     d["anode_eff"] = anode_eff(sol, frame)
     d["t"] = sol.t[frame]
-    d["z"] = sol.grid.cell_centers
+    d["z"] = sol.grid
     d["B"] = f.B
     d["ne"] = f.ne
     d["ue"] = f.ue

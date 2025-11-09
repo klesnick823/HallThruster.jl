@@ -287,7 +287,7 @@ solution = het.run_simulation(config, simparams)
 
 # output
 
-[ Info: Simulation exited at t = 0.001 with retcode :success in 1.025520708 seconds.
+[ Info: Simulation exited at t = 0.001 with retcode :success in 0.396639375 seconds.
 Hall thruster solution with 1000 saved frames (retcode: success, end time: 0.001 seconds)
 ```
 
@@ -401,8 +401,8 @@ using CairoMakie: Makie as mk
 
 avg = het.time_average(solution, 0.5u"ms")
 
-# extract the cell centers in meters, and multiply to convert to cm
-z_cm = avg.grid.cell_centers .* 100
+# extract the grid points in meters, and multiply to convert to cm
+z_cm = avg.grid .* 100
 
 # extract the ion velocity and convert to km/s
 ui_km_s = avg.frames[].ions[:Xe][1].u ./ 1000
