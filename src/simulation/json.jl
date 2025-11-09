@@ -19,17 +19,12 @@ function run_simulation(json_file::String; restart::String = "")
         throw(ArgumentError("$json_file is not a valid JSON file"))
     end
 
-    obj = JSON3.read(read(json_file), allow_inf = true)
+    obj = JSON.parse(read(json_file), allownan = true)
 
     # Read config and sim params from file
-    if haskey(obj, "input")
-        input = obj.input
-    else
-        input = obj
-    end
-
-    cfg = deserialize(Config, input.config)
-    sim = deserialize(SimParams, input.simulation)
+    input = get(obj, "input", obj)
+    cfg = deserialize(Config, input["config"])
+    sim = deserialize(SimParams, input["simulation"])
 
     postprocess::Union{Postprocess, Nothing} = nothing
     if haskey(input, "postprocess") && haskey(input.postprocess, "output_file") &&
@@ -172,7 +167,7 @@ function write_to_json(
     output = serialize_sol(sol; average_start_time, save_time_resolved)
 
     open(file, "w") do f
-        JSON3.write(f, output, allow_inf = true)
+        JSON.json(f, output, allownan = true)
     end
 
     return nothing

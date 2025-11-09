@@ -5,8 +5,7 @@ using DocStringExtensions
 using DelimitedFiles: readdlm, writedlm
 using PrecompileTools: @compile_workload
 
-using JSON3
-using TOML
+using JSON
 using OrderedCollections
 
 # path to the HallThruster directory

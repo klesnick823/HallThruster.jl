@@ -138,7 +138,7 @@ Initialize fluid containers and other plasma variables form a restart
 """
 function initialize_from_restart!(params, restart_file::String)
     # TODO: multiple propellants
-    restart = JSON3.read(read(restart_file))
+    restart = JSON.parse(read(restart_file))
 
     if haskey(restart, "output")
         restart = restart.output

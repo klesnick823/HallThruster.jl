@@ -9,16 +9,16 @@ function test_grid_serialization()
         test_roundtrip(het.GridSpec, het.UnevenGrid(100))
 
         dict1 = het.OrderedDict(
-            :type => "EvenGrid",
-            :num_cells => 100,
+            "type" => "EvenGrid",
+            "num_cells" => 100,
         )
         g = het.deserialize(het.GridSpec, dict1)
         @test g.type == :EvenGrid
         @test g.num_cells == 100
 
         dict2 = het.OrderedDict(
-            :type => "UnevenGrid",
-            :num_cells => 256,
+            "type" => "UnevenGrid",
+            "num_cells" => 256,
         )
         g = het.deserialize(het.GridSpec, dict2)
         @test g.type == :UnevenGrid

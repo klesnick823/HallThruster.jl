@@ -20,12 +20,12 @@ function test_config_serialization()
 
         OD = het.Serialization.OrderedDict
         d = OD(
-            :thruster => het.serialize(het.SPT_100),
-            :discharge_voltage => 800.0,
-            :domain => (0.0, 0.4),
-            :anode_mass_flow_rate => 9.0e-6,
-            :wall_loss_model => OD(
-                :type => "NoWallLosses"
+            "thruster" => het.serialize(het.SPT_100),
+            "discharge_voltage" => 800.0,
+            "domain" => (0.0, 0.4),
+            "anode_mass_flow_rate" => 9.0e-6,
+            "wall_loss_model" => OD(
+                "type" => "NoWallLosses"
             ),
         )
         test_roundtrip(het.Config, d)

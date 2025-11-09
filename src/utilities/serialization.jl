@@ -72,7 +72,9 @@ end
 
 function deserialize(::Struct, ::Type{T}, dict::AbstractDict) where {T}
     args = NamedTuple(
-        field => deserialize(fieldtype(T, field), dict[field])
+        let key = Symbol(field)
+            key => deserialize(fieldtype(T, key), dict[field])
+        end
             for field in keys(dict)
     )
     return T(; args...)
@@ -93,7 +95,7 @@ function serialize(::TaggedUnion, x::T) where {T}
 end
 
 function deserialize(::TaggedUnion, ::Type{T}, dict::AbstractDict) where {T}
-    tag = typetag(T)
+    tag = string(typetag(T))
     type = dict[tag]
     subtype = getfield(options(T), Symbol(type))
 
