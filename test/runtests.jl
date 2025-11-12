@@ -4,6 +4,7 @@ using HallThruster
 
 doctest(HallThruster)
 
+@safetestset "Solutions" include("unit_tests/solution.jl")
 @safetestset "Thrusters" include("unit_tests/thrusters.jl")
 @safetestset "Limiters" include("unit_tests/limiters.jl")
 @safetestset "Allocation" include("unit_tests/allocation.jl")

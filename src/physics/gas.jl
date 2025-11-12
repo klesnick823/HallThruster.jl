@@ -220,5 +220,5 @@ Propellant(gas, flow_rate_kg_s; kwargs...) = Propellant(; gas, flow_rate_kg_s, k
  Serialization
 ==============================================================================#
 const propellants = (; Xenon, Krypton, Argon, Bismuth, Mercury)
-Serialization.SType(::Type{Gas}) = Serialization.Enum()
+Serialization.SType(::Type{Gas}) = Serialization.EnumType()
 Serialization.options(::Type{Gas}) = propellants

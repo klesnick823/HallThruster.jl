@@ -8,7 +8,7 @@ The properties of a heavy species (neutrals or ions).
 # Fields
 $(TYPEDFIELDS)
 """
-struct SpeciesState
+@kwdef struct SpeciesState
     """Number density (1/m^3)"""
     n::Vector{Float64}
     """Number flux (1/m^2 s)"""
@@ -19,9 +19,10 @@ struct SpeciesState
     m::Float64
     """Charge number"""
     Z::Int8
-    function SpeciesState(n::Int, m::Float64, Z::Integer)
-        return new(zeros(n), zeros(n), zeros(n), m, Int8(Z))
-    end
+end
+
+function SpeciesState(n::Int, m::Float64, Z::Integer)
+    return SpeciesState(zeros(n), zeros(n), zeros(n), m, Int8(Z))
 end
 
 function remove_ghosts!(arr)
@@ -235,11 +236,11 @@ For a list of valid fields in a `Frame`, call `fieldnames(HallThruster.Frame)`
 $(TYPEDFIELDS)
 
 """
-struct Solution{T, C <: Config, CC <: CurrentController}
+struct Solution{C <: Config, CC <: CurrentController}
     """
     A vector of times (in seconds) at which simulation output has been saved
     """
-    t::T
+    t::Vector{Float64}
     """
     A vector of `Frame` objects representing snapshots of the simulation state, at the times specified in `t`
     """
@@ -271,6 +272,14 @@ struct Solution{T, C <: Config, CC <: CurrentController}
     Holds to error text and backtrace, if an error occurred. Empty if `sol.retcode != :error`.
     """
     error::String
+end
+
+function Solution(t, frames, grid, config::C, simulation::SimParams{CC}, postprocess, retcode, error) where {C, CC}
+    return Solution{C, CC}(t, frames, grid, config, simulation, postprocess, retcode, error)  
+end
+
+function Solution(;t, frames, grid::Vector{Float64}, config::Config, simulation::SimParams, postprocess::Postprocess, retcode::Symbol, error::String)
+    return Solution(t, frames, grid, config, simulation, postprocess, retcode, error)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", sol::Solution)
