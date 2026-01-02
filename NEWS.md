@@ -4,6 +4,12 @@ EditURL = "NEWS.md"
 
 # Release notes
 
+## v0.21.0
+
+### Internal changes
+- Update ghost cell handling to use real ghost cells instead of edges at boundaries
+- Switch serialization to JSON.jl instead of JSON3.
+
 ## v0.20.0
 
 ### New features
