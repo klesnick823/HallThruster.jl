@@ -124,15 +124,15 @@ function test_electron_losses()
 
         params.cache.γ_SEE .= γ
         params.cache.νew_momentum[1:idx_in] .= νew
-        params.cache.νew_momentum[idx_in+1:end] .= 0.0
+        params.cache.νew_momentum[(idx_in + 1):end] .= 0.0
         params.cache.radial_loss_frequency[:] .= νew
 
         Iew = het.wall_electron_current(sheath_model, params, idx_in)
         @test Iew ≈ νew * het.e * V_cell * ne
 
         @test het.freq_electron_wall(sheath_model, params, idx_in) *
-           het.linear_transition(
-           grid.cell_centers[idx_in], L_ch, config.transition_length, 1.0, 0.0,
+            het.linear_transition(
+            grid.cell_centers[idx_in], L_ch, config.transition_length, 1.0, 0.0,
         ) ≈ νew
 
         @test het.freq_electron_wall(sheath_model, params, idx_out) *

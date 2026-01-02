@@ -28,14 +28,14 @@ function integrate_potential!(ϕ, ∇ϕ, grid, V_L)
     grid.cell_centers[end] = grid.edges[end]
 
     ∇ϕ[1] = 0.5 * (EL + ∇ϕ[2])
-    ∇ϕ[end] = 0.5 * (ER + ∇ϕ[end-1])
+    ∇ϕ[end] = 0.5 * (ER + ∇ϕ[end - 1])
 
     # Integrate potential from left to right edge
     cumtrapz!(ϕ, grid.cell_centers, ∇ϕ, V_L)
 
     # Extrapolate potential to ghost cells
     ϕ[1] = ϕ[1] + (ϕ[1] - ϕ[2])
-    ϕ[end] = ϕ[end] + (ϕ[end] - ϕ[end-1])
+    ϕ[end] = ϕ[end] + (ϕ[end] - ϕ[end - 1])
 
     # Replace electric field and cell center values
     grid.cell_centers[1], grid.cell_centers[end] = zL, zR

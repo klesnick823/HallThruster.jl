@@ -153,8 +153,8 @@ function energy_boundary_conditions!(Aϵ, bϵ, Te_L, Te_R, ne, ue, anode_bc)
     end
 
     # 0.5 (nϵ[end-1]/ne[end-1] + nϵ[end]/ne[end]) = Te_R
-    Aϵ.d[end] = 0.5 / ne[end] 
-    Aϵ.dl[end] = 0.5 / ne[end-1]
+    Aϵ.d[end] = 0.5 / ne[end]
+    Aϵ.dl[end] = 0.5 / ne[end - 1]
     bϵ[end] = 1.5 * Te_R
     return
 end
@@ -204,7 +204,7 @@ function update_pressure_gradient!(∇pe, pe, z_cell)
     # pressure gradient (backward)
     ∇pe[end] = backward_difference(
         pe[end - 2], pe[end - 1], pe[end], z_cell[end - 2], z_cell[end - 1], z_cell[end],
-  
+
     )
 
     return nothing

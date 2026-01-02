@@ -34,7 +34,7 @@ function test_config_serialization()
 end
 
 function test_configuration()
-    anom_model = het.TwoZoneBohm(1//100, 1//10)
+    anom_model = het.TwoZoneBohm(1 // 100, 1 // 10)
     config = het.Config(;
         ncharge = 3,
         discharge_voltage = 200,
@@ -85,13 +85,13 @@ function test_configuration()
 
     @testset "Anom initialization" begin
         # When we first initialize a simulation, the anom transport is set to this TwoZoneBohm
-        # This is because we require some value of the anomalous collision frequency to 
+        # This is because we require some value of the anomalous collision frequency to
         # properly initialize the other plasma properties.
         initial_model = het.TwoZoneBohm(1 // 160, 1 / 16)
         v = anom_model(zeros(ncells + 2), params, config)
 
         # Only include interior cells here
-        inds = 2:ncells+1
+        inds = 2:(ncells + 1)
 
         init = initial_model(zeros(ncells + 2), params, config)
         @test all(init[inds] .== params.cache.νan[inds])

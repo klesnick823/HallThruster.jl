@@ -12,7 +12,7 @@ function compute_edge_states_continuity!(fluid, do_reconstruct)
     N = length(fluid.density)
 
     if do_reconstruct
-        @inbounds for i in 2:N-1
+        @inbounds for i in 2:(N - 1)
             iL, iR = left_edge(i), right_edge(i)
             # Reconstruct density
             u₋ = density[i - 1]
@@ -21,7 +21,7 @@ function compute_edge_states_continuity!(fluid, do_reconstruct)
             dens_R[iL], dens_L[iR] = reconstruct(u₋, uᵢ, u₊)
         end
     else
-        @inbounds for i in 2:N-1
+        @inbounds for i in 2:(N - 1)
             iL, iR = left_edge(i), right_edge(i)
             dens_L[iR] = density[i]
             dens_R[iL] = density[i]
@@ -31,7 +31,7 @@ function compute_edge_states_continuity!(fluid, do_reconstruct)
     # Get edge density from boundary cells
     # More details in `compute_edge_states_isothermal`
     edg_dens_L = 0.5 * (fluid.density[1] + fluid.density[2])
-    edg_dens_R = 0.5 * (fluid.density[end-1] + fluid.density[end])
+    edg_dens_R = 0.5 * (fluid.density[end - 1] + fluid.density[end])
     fluid.dens_L[1] = edg_dens_L
     fluid.dens_R[end] = edg_dens_R
     return
@@ -74,17 +74,17 @@ function compute_edge_states_isothermal!(fluid, do_reconstruct)
     #            =|   cell    |
     #       o----=|-----o-----|---
     # Cell: 1    =|     2     |
-    # Edge:     L 1 R       L 2 R    
-    # 
+    # Edge:     L 1 R       L 2 R
+    #
     # We calculate boundary properties at edge 1,
     # and extrapolate linearly to set the cell 1 properties.
     # The flux at the left edge should be set according to the edge property,
     # which we can compute by averaging the cell 1 and cell 2 properties.
 
     edg_dens_L = 0.5 * (fluid.density[1] + fluid.density[2])
-    edg_dens_R = 0.5 * (fluid.density[end-1] + fluid.density[end])
+    edg_dens_R = 0.5 * (fluid.density[end - 1] + fluid.density[end])
     edg_mom_L = 0.5 * (fluid.momentum[1] + fluid.momentum[2])
-    edg_mom_R = 0.5 * (fluid.momentum[end-1] + fluid.momentum[end])
+    edg_mom_R = 0.5 * (fluid.momentum[end - 1] + fluid.momentum[end])
 
     fluid.dens_L[1] = edg_dens_L
     fluid.dens_R[end] = edg_dens_R

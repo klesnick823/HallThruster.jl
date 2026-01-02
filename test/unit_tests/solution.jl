@@ -23,7 +23,7 @@ function test_solution_serialization()
     cfg_ser = het.serialize(config)
 
     sol = het.run_simulation(config, simparams)
-    avg = het.time_average(sol) 
+    avg = het.time_average(sol)
 
     frame = avg.frames[1]
     neutral_state = frame.neutrals[:Xe]

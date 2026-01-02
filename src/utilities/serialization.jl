@@ -66,8 +66,8 @@ deserialize(::TupleType, ::Type{T}, x) where {T} = T(deserialize(eltype(T), _x) 
 serialize(::DictType, x) = OrderedDict(serialize(k) => serialize(v) for (k, v) in x)
 
 function deserialize(::DictType, ::Type{T}, x) where {K, V, T <: AbstractDict{K, V}}
-     return T(deserialize(K, k) => deserialize(V, v) for (k, v) in x)
- end
+    return T(deserialize(K, k) => deserialize(V, v) for (k, v) in x)
+end
 
 # Fallback for Any
 deserialize(::S, ::Type{Any}, x::T) where {S <: SType, T} = deserialize(T, x)
@@ -82,7 +82,7 @@ end
 function deserialize(::Struct, ::Type{T}, dict::AbstractDict) where {T}
     args = NamedTuple(
         let key = Symbol(field)
-            key => deserialize(fieldtype(T, key), dict[field])
+                key => deserialize(fieldtype(T, key), dict[field])
         end
             for field in keys(dict)
     )

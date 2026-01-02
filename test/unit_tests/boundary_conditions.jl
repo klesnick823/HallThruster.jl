@@ -29,13 +29,13 @@ function test_boundaries()
 
     # Check boundary handling of electron temperature solver
     # (electron temperature is solved, including boundaries, during setup)
-    (;Tev, ϕ) = params.cache
+    (; Tev, ϕ) = params.cache
     @test 0.5 * (Tev[1] + Tev[2]) ≈ params.Te_L
-    @test 0.5 * (Tev[end] + Tev[end-1]) ≈ params.Te_R
+    @test 0.5 * (Tev[end] + Tev[end - 1]) ≈ params.Te_R
 
     # Check potential (also solved during setup)
     @test 0.5 * (ϕ[1] + ϕ[2]) ≈ V_d
-    @test 0.5 * (ϕ[end-1] + ϕ[end]) ≈ V_cc
+    @test 0.5 * (ϕ[end - 1] + ϕ[end]) ≈ V_cc
 
     # Anode ion velocity less than bohm velocity
     prop = config.propellants[1]
@@ -74,12 +74,12 @@ function test_boundaries()
     het.apply_right_boundary!(params.fluid_containers)
 
     # Edge boundary state should equal average of ghost cell and first interior cell
-    boundary_ion_flux = [(ion.momentum[1] + ion.momentum[2])/2 for ion in isothermal]
-    boundary_ion_dens = [(ion.density[1] + ion.density[2])/2 for ion in isothermal]
+    boundary_ion_flux = [(ion.momentum[1] + ion.momentum[2]) / 2 for ion in isothermal]
+    boundary_ion_dens = [(ion.density[1] + ion.density[2]) / 2 for ion in isothermal]
     boundary_ion_vel = [flux / dens for (flux, dens) in zip(boundary_ion_flux, boundary_ion_dens)]
 
     neutral_dens_edge = 0.5 * (continuity[1].density[1] + continuity[1].density[2])
-    recombined_ion_flux = -sum(boundary_ion_flux) / un 
+    recombined_ion_flux = -sum(boundary_ion_flux) / un
     background_flux = nn_B * un_B / un * config.neutral_ingestion_multiplier
 
     @test neutral_dens_edge ≈ inlet_density + recombined_ion_flux + background_flux
@@ -107,12 +107,12 @@ function test_boundaries()
     het.apply_right_boundary!(params.fluid_containers)
 
     # Edge boundary state should equal average of ghost cell and first interior cell
-    boundary_ion_flux = [(ion.momentum[1] + ion.momentum[2])/2 for ion in isothermal]
-    boundary_ion_dens = [(ion.density[1] + ion.density[2])/2 for ion in isothermal]
+    boundary_ion_flux = [(ion.momentum[1] + ion.momentum[2]) / 2 for ion in isothermal]
+    boundary_ion_dens = [(ion.density[1] + ion.density[2]) / 2 for ion in isothermal]
     boundary_ion_vel = [flux / dens for (flux, dens) in zip(boundary_ion_flux, boundary_ion_dens)]
     neutral_dens_edge = 0.5 * (continuity[1].density[1] + continuity[1].density[2])
 
-    recombined_ion_flux = -sum(boundary_ion_flux) / un 
+    recombined_ion_flux = -sum(boundary_ion_flux) / un
     background_flux = nn_B * un_B / un * config.neutral_ingestion_multiplier
 
     @test neutral_dens_edge ≈ inlet_density + recombined_ion_flux + background_flux

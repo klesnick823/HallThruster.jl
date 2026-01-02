@@ -218,7 +218,7 @@ function apply_left_boundary!(fluids, propellant, cache, anode_bc, ingestion_flo
     # Add inlet neutral density
     # Add ingested mass flow rate at anode
     un = fluids.continuity[].const_velocity
- 
+
     # Expected neutral density at left edge (from injection)
     neutral_density = (mdot_a + ingestion_flow_rate) / cache.channel_area[1] / un
 
@@ -341,7 +341,7 @@ function apply_reactions!(fluids, rxns, cache, landmark)
         inelastic_losses .= 0.0
         @. ϵ = cache.nϵ / cache.ne
         if !landmark
-           @. ϵ += K
+            @. ϵ += K
         end
     end
 

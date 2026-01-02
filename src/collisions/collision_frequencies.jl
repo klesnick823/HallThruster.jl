@@ -18,7 +18,7 @@ function freq_electron_neutral!(νen::Vector{T}, coll::ElasticCollision, fluid::
     end
     # Extrapolate collision frequencies to ghost cells
     νen[1] = νen[2] - (νen[2] - νen[3])
-    νen[end] = νen[end-1] + (νen[end-1] - νen[end-2])
+    νen[end] = νen[end - 1] + (νen[end - 1] - νen[end - 2])
     return νen
 end
 
@@ -38,7 +38,7 @@ function freq_electron_ion!(
     end
     # Extrapolate collision frequencies to ghost cells
     νei[1] = νei[2] - (νei[2] - νei[3])
-    νei[end] = νei[end-1] + (νei[end-1] - νei[end-2])
+    νei[end] = νei[end - 1] + (νei[end - 1] - νei[end - 2])
     return
 end
 

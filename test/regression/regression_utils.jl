@@ -157,7 +157,7 @@ function check_regression_case(case)
         @test ϕ[end] ≈ avg.config.cathode_coupling_voltage atol = 0.01
 
         # Check temperature boundary condition
-        diff = abs(Tev[end] - Tev[end-1])
+        diff = abs(Tev[end] - Tev[end - 1])
         @test Tev[end] ≈ avg.config.cathode_Tev atol = 0.2 * diff
 
         T = het.thrust(sol) .* 1000

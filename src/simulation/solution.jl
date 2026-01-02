@@ -27,7 +27,7 @@ end
 
 function remove_ghosts!(arr)
     c1, c2 = arr[1], arr[2]
-    c3, c4 = arr[end-1], arr[end]
+    c3, c4 = arr[end - 1], arr[end]
     arr[1] = 0.5 * (c1 + c2)
     arr[end] = 0.5 * (c3 + c4)
     return arr
@@ -275,10 +275,10 @@ struct Solution{C <: Config, CC <: CurrentController}
 end
 
 function Solution(t, frames, grid, config::C, simulation::SimParams{CC}, postprocess, retcode, error) where {C, CC}
-    return Solution{C, CC}(t, frames, grid, config, simulation, postprocess, retcode, error)  
+    return Solution{C, CC}(t, frames, grid, config, simulation, postprocess, retcode, error)
 end
 
-function Solution(;t, frames, grid::Vector{Float64}, config::Config, simulation::SimParams, postprocess::Postprocess, retcode::Symbol, error::String)
+function Solution(; t, frames, grid::Vector{Float64}, config::Config, simulation::SimParams, postprocess::Postprocess, retcode::Symbol, error::String)
     return Solution(t, frames, grid, config, simulation, postprocess, retcode, error)
 end
 

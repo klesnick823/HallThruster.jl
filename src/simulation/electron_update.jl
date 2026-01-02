@@ -127,22 +127,22 @@ function integrate_discharge_current(grid, cache, V_L, V_R, apply_drag)
 
     # Replace left and right values with edge values
     integrand_1[1] = 0.5 * (integrand_1[1] + integrand_1[2])
-    integrand_1[end] = 0.5 * (integrand_1[end-1] + integrand_1[end])
+    integrand_1[end] = 0.5 * (integrand_1[end - 1] + integrand_1[end])
     integrand_2[1] = 0.5 * (integrand_2[1] + integrand_2[2])
-    integrand_2[end] = 0.5 * (integrand_2[end-1] + integrand_2[end])
+    integrand_2[end] = 0.5 * (integrand_2[end - 1] + integrand_2[end])
 
     # Compute integrals using trapezoidal rule around edges
     int1 = 0.0
     int2 = 0.0
     @inbounds for (i, z_edge) in enumerate(grid.edges)
         zL = grid.cell_centers[i]
-        zR = grid.cell_centers[i+1]
+        zR = grid.cell_centers[i + 1]
 
         f1_L = integrand_1[i]
-        f1_R = integrand_1[i+1]
+        f1_R = integrand_1[i + 1]
 
         f2_L = integrand_2[i]
-        f2_R = integrand_2[i+1]
+        f2_R = integrand_2[i + 1]
 
         # account for boundary cells
         if i == 1 || i == length(grid.edges)

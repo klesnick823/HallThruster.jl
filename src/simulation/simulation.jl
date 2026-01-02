@@ -65,7 +65,7 @@ function setup_simulation(
 
     # 2. Extrapolate to ghost cells
     cache.B[1] = B_L - (cache.B[2] - B_L)
-    cache.B[end] = B_R + (B_R - cache.B[end-1]) 
+    cache.B[end] = B_R + (B_R - cache.B[end - 1])
 
     # ================================================================================
     # Timestep setup

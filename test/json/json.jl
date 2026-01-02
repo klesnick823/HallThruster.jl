@@ -36,7 +36,7 @@ config = sol.config
 outfile = "output.json"
 @test ispath(outfile)
 
-out = JSON.parse(read(outfile), allownan=true)
+out = JSON.parse(read(outfile), allownan = true)
 @test haskey(out, "input")
 @test haskey(out.input, "config")
 @test haskey(out.input, "simulation")

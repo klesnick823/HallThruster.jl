@@ -40,7 +40,7 @@ function test_grid_invariants(spec, grid, dom)
 
 
         @test grid.cell_centers[1] == grid.edges[1] + (grid.edges[1] - grid.cell_centers[2])
-        @test grid.cell_centers[end] == grid.edges[end] + (grid.edges[end] - grid.cell_centers[end-1])
+        @test grid.cell_centers[end] == grid.edges[end] + (grid.edges[end] - grid.cell_centers[end - 1])
 
         @test all(
             grid.cell_centers[i] == 0.5 * (grid.edges[i] + grid.edges[i - 1])
