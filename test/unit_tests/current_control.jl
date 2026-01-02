@@ -12,14 +12,14 @@ function test_controller_serialization()
         test_roundtrip(het.CurrentController, pid)
 
         pid_dict = het.Serialization.OrderedDict(
-            :type => "PIDController",
-            :target_value => 15.0,
-            :integral_constant => 1.0,
+            "type" => "PIDController",
+            "target_value" => 15.0,
+            "integral_constant" => 1.0,
         )
         pid2 = het.deserialize(het.CurrentController, pid_dict)
         @test pid2 isa het.PIDController
-        @test pid2.target_value == pid_dict[:target_value]
-        @test pid2.integral_constant == pid_dict[:integral_constant]
+        @test pid2.target_value == pid_dict["target_value"]
+        @test pid2.integral_constant == pid_dict["integral_constant"]
         test_roundtrip(het.CurrentController, pid_dict)
     end
 end

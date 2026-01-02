@@ -24,6 +24,6 @@ config = het.Config(;
     :warn,
     "CFL for adaptive timestepping set higher than stability limit of 0.8. Setting CFL to 0.799.",
 ) match_mode = :any het.run_simulation(
-    config; dt = 5.0e-9, duration = 0.0e-9, grid = het.EvenGrid(2),
+    config; dt = 5.0e-9, duration = 0.0e-9, grid = het.EvenGrid(9),
     nsave = 10, adaptive = true, CFL = 0.9,
 )

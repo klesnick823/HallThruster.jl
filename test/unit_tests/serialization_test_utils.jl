@@ -1,5 +1,5 @@
 using Test
-using HallThruster: HallThruster as ht, JSON3 as js
+using HallThruster: HallThruster as ht, JSON as js
 
 function struct_eq(x::T, y::T) where {T}
     if x != y
@@ -16,8 +16,8 @@ end
 
 function test_roundtrip(::Type{T}, x::X) where {T, X <: T}
     dict = ht.serialize(x)
-    json = js.write(dict)
-    dict2 = js.read(json)
+    json = js.json(dict)
+    dict2 = js.parse(json)
     x2 = ht.deserialize(T, dict2)
     return @test struct_eq(x, x2)
 end
@@ -37,10 +37,10 @@ end
 function test_subtype(::Type{T}, subtype::S; show_js = false) where {T, S <: T}
     dict = ht.serialize(subtype)
 
-    @test dict[:type] == string(nameof(S))
+    @test dict["type"] == string(nameof(S))
     @test length(keys(dict)) == fieldcount(S) + 1
     if show_js
-        js.pretty(dict)
+        js.json(dict, pretty = true)
         println()
     end
 

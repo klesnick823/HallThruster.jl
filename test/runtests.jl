@@ -4,6 +4,7 @@ using HallThruster
 
 doctest(HallThruster)
 
+@safetestset "Solutions" include("unit_tests/solution.jl")
 @safetestset "Thrusters" include("unit_tests/thrusters.jl")
 @safetestset "Limiters" include("unit_tests/limiters.jl")
 @safetestset "Allocation" include("unit_tests/allocation.jl")
@@ -22,5 +23,5 @@ doctest(HallThruster)
 @safetestset "Setup" include("unit_tests/setup.jl")
 @safetestset "JSON" include("json/json.jl")
 @safetestset "External coupling" include("external_coupling/anom.jl")
-@safetestset "Output regression" include("regression/test_regression.jl")
 @safetestset "Order verification" include("order_verification/test_ovs.jl")
+@safetestset "Output regression" include("regression/test_regression.jl")

@@ -20,12 +20,12 @@ function test_config_serialization()
 
         OD = het.Serialization.OrderedDict
         d = OD(
-            :thruster => het.serialize(het.SPT_100),
-            :discharge_voltage => 800.0,
-            :domain => (0.0, 0.4),
-            :anode_mass_flow_rate => 9.0e-6,
-            :wall_loss_model => OD(
-                :type => "NoWallLosses"
+            "thruster" => het.serialize(het.SPT_100),
+            "discharge_voltage" => 800.0,
+            "domain" => (0.0, 0.4),
+            "anode_mass_flow_rate" => 9.0e-6,
+            "wall_loss_model" => OD(
+                "type" => "NoWallLosses"
             ),
         )
         test_roundtrip(het.Config, d)
@@ -34,10 +34,10 @@ function test_config_serialization()
 end
 
 function test_configuration()
-    anom_model = het.NoAnom()
+    anom_model = het.TwoZoneBohm(1 // 100, 1 // 10)
     config = het.Config(;
         ncharge = 3,
-        discharge_voltage = 300,
+        discharge_voltage = 200,
         anode_mass_flow_rate = 5.0e-6,
         thruster = het.SPT_100,
         domain = (0.0, 5.0e-2),
@@ -84,16 +84,23 @@ function test_configuration()
     end
 
     @testset "Anom initialization" begin
+        # When we first initialize a simulation, the anom transport is set to this TwoZoneBohm
+        # This is because we require some value of the anomalous collision frequency to
+        # properly initialize the other plasma properties.
         initial_model = het.TwoZoneBohm(1 // 160, 1 / 16)
         v = anom_model(zeros(ncells + 2), params, config)
+
+        # Only include interior cells here
+        inds = 2:(ncells + 1)
+
         init = initial_model(zeros(ncells + 2), params, config)
+        @test all(init[inds] .== params.cache.νan[inds])
+        @test all(v[inds] .!= params.cache.νan[inds])
 
-        @test all(init .== params.cache.νan)
-        @test all(v .!= params.cache.νan)
-
+        # After one timestep, the anom. transport model we choose kicks in
         sol = het.run_from_setup(params, config)
-        @test all(init .!= sol.frames[end].nu_an)
-        @test all(v .== sol.frames[end].nu_an)
+        @test all(init[inds] .!= sol.frames[end].nu_an[inds])
+        @test all(v[inds] .== sol.frames[end].nu_an[inds])
     end
 
     return

@@ -1,6 +1,6 @@
 function update_electron_energy!(params, wall_loss_model, source_energy, dt)
-    (; Te_L, Te_R, grid, cache, min_Te, implicit_energy, anode_bc, landmark) = params
-    (; Aϵ, bϵ, nϵ, ue, ne, Tev, pe) = cache
+    (; Te_L, Te_R, grid, cache, implicit_energy, anode_bc, landmark) = params
+    (; Aϵ, bϵ, nϵ, ue, ne, Tev, pe, ∇pe) = cache
 
     Q = cache.cell_cache_1
 
@@ -12,6 +12,7 @@ function update_electron_energy!(params, wall_loss_model, source_energy, dt)
         Q[i] += source_energy(params, i)
     end
 
+    # Set up energy boundary conditions
     energy_boundary_conditions!(Aϵ, bϵ, Te_L, Te_R, ne, ue, anode_bc)
 
     # Fill matrix and RHS
@@ -21,9 +22,11 @@ function update_electron_energy!(params, wall_loss_model, source_energy, dt)
     tridiagonal_solve!(nϵ, Aϵ, bϵ)
 
     # Make sure Tev is positive, limit if below minumum electron temperature
-    limit_energy!(nϵ, ne, min_Te)
-    update_temperature!(Tev, nϵ, ne, min_Te)
+    limit_energy!(nϵ, ne)
+    update_temperature!(Tev, nϵ, ne)
     update_pressure!(pe, nϵ, landmark)
+    update_pressure_gradient!(∇pe, pe, grid.cell_centers)
+
     return
 end
 
@@ -33,20 +36,25 @@ function setup_energy_system!(Aϵ, bϵ, grid, cache, anode_bc, implicit, dt)
     explicit = 1.0 - implicit
     Q = cache.cell_cache_1
 
-    @inbounds for i in 2:(grid.num_cells - 1)
+    @inbounds for i in interior_cells(grid.cell_centers)
+        # Get properties at neighboring cells:
+
+        # Electron density
         neL = ne[i - 1]
         ne0 = ne[i]
         neR = ne[i + 1]
 
+        # Electron energy density
         nϵL = nϵ[i - 1]
         nϵ0 = nϵ[i]
         nϵR = nϵ[i + 1]
 
+        # Electron velocity
         ueL = ue[i - 1]
         ue0 = ue[i]
         ueR = ue[i + 1]
 
-        #pull thermal conductivity values
+        # Thermal conductivity
         κL = κ[i - 1]
         κ0 = κ[i]
         κR = κ[i + 1]
@@ -73,13 +81,14 @@ function setup_energy_system!(Aϵ, bϵ, grid, cache, anode_bc, implicit, dt)
                 Te0 = 2 / 3 * nϵ0 / ne0
 
                 # discharge current density
+                # channel area is constant inside channel so [1] is an OK index.
                 jd = cache.Id[] / channel_area[1]
 
                 # current densities at sheath edge
-                ji_sheath_edge = ji[1]
+                ji_sheath_edge = 0.5 * (ji[1] + ji[2])
                 je_sheath_edge = jd - ji_sheath_edge
 
-                ne_sheath_edge = ne[1]
+                ne_sheath_edge = 0.5 * (ne[1] + ne[2])
                 ue_sheath_edge = -je_sheath_edge / ne_sheath_edge / e
 
                 FL_factor_L = 0.0
@@ -131,13 +140,11 @@ function setup_energy_system!(Aϵ, bϵ, grid, cache, anode_bc, implicit, dt)
 end
 
 function energy_boundary_conditions!(Aϵ, bϵ, Te_L, Te_R, ne, ue, anode_bc)
-    Aϵ.d[1] = 1.0
-    Aϵ.du[1] = 0.0
-    Aϵ.d[end] = 1.0
-    Aϵ.dl[end] = 0.0
-
-    if anode_bc == :dirichlet || ue[1] > 0
-        bϵ[1] = 1.5 * Te_L * ne[1]
+    if anode_bc == :dirichlet || ue[2] > 0
+        # 0.5 (nϵ[1]/ne[1] + nϵ[2]/ne[2]) = Te_L
+        Aϵ.d[1] = 0.5 / ne[1]
+        Aϵ.du[1] = 0.5 / ne[2]
+        bϵ[1] = 1.5 * Te_L
     else
         # Neumann BC for electron temperature
         bϵ[1] = 0
@@ -145,24 +152,27 @@ function energy_boundary_conditions!(Aϵ, bϵ, Te_L, Te_R, ne, ue, anode_bc)
         Aϵ.du[1] = -1.0 / ne[2]
     end
 
-    bϵ[end] = 1.5 * Te_R * ne[end]
+    # 0.5 (nϵ[end-1]/ne[end-1] + nϵ[end]/ne[end]) = Te_R
+    Aϵ.d[end] = 0.5 / ne[end]
+    Aϵ.dl[end] = 0.5 / ne[end - 1]
+    bϵ[end] = 1.5 * Te_R
     return
 end
 
-function limit_energy!(nϵ, ne, min_Te)
-    @inbounds for i in eachindex(nϵ)
-        if !isfinite(nϵ[i]) || nϵ[i] / ne[i] < 1.5 * min_Te
-            nϵ[i] = 1.5 * min_Te * ne[i]
+function limit_energy!(nϵ, ne)
+    @inbounds for i in interior_cells(nϵ)
+        if !isfinite(nϵ[i]) || nϵ[i] / ne[i] < 1.5 * MIN_TE
+            nϵ[i] = 1.5 * MIN_TE * ne[i]
         end
     end
     return
 end
 
-function update_temperature!(Tev, nϵ, ne, min_Te)
+function update_temperature!(Tev, nϵ, ne)
     # Update plasma quantities based on new density
     @inbounds for i in eachindex(Tev)
         # Compute new electron temperature
-        Tev[i] = 2.0 / 3.0 * max(min_Te, nϵ[i] / ne[i])
+        Tev[i] = max(MIN_TE, nϵ[i] / ne[i] / 1.5)
     end
     return
 end
@@ -177,6 +187,27 @@ function update_pressure!(pe, nϵ, landmark)
         pe[i] = pe_factor * nϵ[i]
     end
     return
+end
+
+function update_pressure_gradient!(∇pe, pe, z_cell)
+    # Pressure gradient (forward)
+    ∇pe[1] = forward_difference(pe[1], pe[2], pe[3], z_cell[1], z_cell[2], z_cell[3])
+
+    # Centered difference in interior cells
+    @inbounds for j in interior_cells(pe)
+        # Compute pressure gradient
+        ∇pe[j] = central_difference(
+            pe[j - 1], pe[j], pe[j + 1], z_cell[j - 1], z_cell[j], z_cell[j + 1],
+        )
+    end
+
+    # pressure gradient (backward)
+    ∇pe[end] = backward_difference(
+        pe[end - 2], pe[end - 1], pe[end], z_cell[end - 2], z_cell[end - 1], z_cell[end],
+
+    )
+
+    return nothing
 end
 
 #===============================================================================

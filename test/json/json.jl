@@ -1,4 +1,4 @@
-using JSON3: JSON3
+using JSON: JSON
 using HallThruster: HallThruster as het
 
 include("$(het.TEST_DIR)/unit_tests/serialization_test_utils.jl")
@@ -36,7 +36,7 @@ config = sol.config
 outfile = "output.json"
 @test ispath(outfile)
 
-out = JSON3.read(outfile)
+out = JSON.parse(read(outfile), allownan = true)
 @test haskey(out, "input")
 @test haskey(out.input, "config")
 @test haskey(out.input, "simulation")
@@ -80,7 +80,7 @@ prop2 = config.propellants[2]
 outfile = "output.json"
 @test ispath(outfile)
 
-out = JSON3.read(outfile);
+out = JSON.parse(read(outfile));
 output = out.output
 @test haskey(output.average, "ions")
 @test haskey(output.average, "neutrals")

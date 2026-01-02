@@ -368,22 +368,22 @@ end
 function Serialization.deserialize(::Type{C}, x) where {C <: Config}
     d = copy(x)
     # Handle configs from older versions
-    if !haskey(d, :propellants)
-        gas = get(d, :propellant, Xenon)
-        max_charge = get(d, :ncharge, 1)
-        velocity_m_s = get(d, :neutral_velocity, nothing)
-        temperature_K = get(d, :neutral_temperature_K, nothing)
-        ion_temperature_K = get(d, :ion_temperature_K, DEFAULT_ION_TEMPERATURE_K)
-        flow_rate_kg_s = d[:anode_mass_flow_rate]
+    if !haskey(d, "propellants")
+        gas = get(d, "propellant", Xenon)
+        max_charge = get(d, "ncharge", 1)
+        velocity_m_s = get(d, "neutral_velocity", nothing)
+        temperature_K = get(d, "neutral_temperature_K", nothing)
+        ion_temperature_K = get(d, "ion_temperature_K", DEFAULT_ION_TEMPERATURE_K)
+        flow_rate_kg_s = d["anode_mass_flow_rate"]
         prop = Propellant(gas, flow_rate_kg_s; max_charge, velocity_m_s, temperature_K, ion_temperature_K)
         prop_dict = serialize(prop)
         for key in [
-                :propellant, :ncharge, :anode_mass_flow_rate,
-                :neutral_velocity, :neutral_temperature_K, :ion_temperature_K,
+                "propellant", "ncharge", "anode_mass_flow_rate",
+                "neutral_velocity", "neutral_temperature_K", "ion_temperature_K",
             ]
-            delete!(d, key)
+            delete!(d, string(key))
         end
-        d[:propellants] = [prop_dict]
+        d["propellants"] = [prop_dict]
     end
     return deserialize(Serialization.Struct(), C, d)
 end

@@ -18,7 +18,9 @@ function Grid1D(z_edge)
     z_cell = [0.5 * (z_edge[i + 1] + z_edge[i]) for i in 1:ncells]
 
     # add ghost cells on left and right boundaries
-    z_cell = [z_edge[1]; z_cell; z_edge[end]]
+    z_ghost_left = z_cell[1] - (z_edge[2] - z_edge[1])
+    z_ghost_right = z_cell[end] + (z_edge[end] - z_edge[end - 1])
+    z_cell = [z_ghost_left; z_cell; z_ghost_right]
 
     # calculate grid spacing
     dz_edge = @. @views z_cell[2:end] - z_cell[1:(end - 1)]
@@ -28,3 +30,5 @@ function Grid1D(z_edge)
     # Add 2 to cell count to account for ghost cells
     return Grid1D(ncells + 2, z_edge, z_cell, dz_edge, dz_cell)
 end
+
+@inline interior_cells(arr) = 2:(length(arr) - 1)

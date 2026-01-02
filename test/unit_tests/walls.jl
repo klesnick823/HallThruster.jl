@@ -41,7 +41,10 @@ function test_electron_losses()
         Tev = 4.0
         ne = 1.0e18
         nϵ = 3 / 2 * ne * Tev
-        ncells = 2
+        ncells = 8
+
+        idx_in = 2
+        idx_out = ncells + 1
 
         transition_length = 0.2 * L_ch
         config = het.Config(;
@@ -59,11 +62,15 @@ function test_electron_losses()
         (; cache, grid) = params
 
         # Initialize plasma state
-        @. cache.ne = [ne, ne, ne, ne]
-        # @. cache.ni = [ne ne ne ne]
-        @. cache.Tev = [Tev, Tev, Tev, Tev]
-        @. cache.ϵ = 1.5 .* [Tev, Tev, Tev, Tev]
-        @. cache.nϵ = [nϵ, nϵ, nϵ, nϵ]
+        @. cache.ne .= ne
+        @. cache.Tev .= Tev
+        @. cache.ϵ .= 1.5 * Tev
+        @. cache.nϵ .= nϵ
+
+        # Set fluid container density (used later)
+        for fluid in params.fluid_containers.isothermal
+            fluid.density .= ne * mi
+        end
 
         mi_kr = het.Krypton.m
         γmax = 1 - 8.3 * sqrt(me / mi)
@@ -71,11 +78,11 @@ function test_electron_losses()
 
         arr = zeros(ncells + 2)
         het.wall_power_loss!(arr, no_losses, params)
-        @test arr[2] == 0.0
+        @test arr[idx_in] == 0.0
 
         het.wall_power_loss!(arr, landmark_losses, params)
-        @test arr[2] ≈ αin * 6.0 * 1.0e7 * exp(-20 / 6.0)
-        @test arr[3] ≈ αout * 6.0 * 1.0e7 * exp(-20 / 6.0)
+        @test arr[idx_in] ≈ αin * 6.0 * 1.0e7 * exp(-20 / 6.0)
+        @test arr[idx_out] ≈ αout * 6.0 * 1.0e7 * exp(-20 / 6.0)
 
         γ1 = 0.5
         γ2 = 1.0
@@ -102,13 +109,13 @@ function test_electron_losses()
         Δz = grid.edges[2] - grid.edges[1]
         V_cell = A_ch * Δz
 
-        @test het.freq_electron_wall(no_losses, params, 2) == 0.0
-        @test het.freq_electron_wall(no_losses, params, 3) == 0.0
+        @test het.freq_electron_wall(no_losses, params, idx_in) == 0.0
+        @test het.freq_electron_wall(no_losses, params, idx_out) == 0.0
 
-        @test het.freq_electron_wall(landmark_losses, params, 2) == 1.0e7
-        @test het.freq_electron_wall(landmark_losses, params, 3) *
+        @test het.freq_electron_wall(landmark_losses, params, idx_in) == 1.0e7
+        @test het.freq_electron_wall(landmark_losses, params, idx_out) *
             het.linear_transition(
-            grid.cell_centers[3], L_ch, config.transition_length, 1.0, 0.0,
+            grid.cell_centers[idx_out], L_ch, config.transition_length, 1.0, 0.0,
         ) == 0.0e7
 
         γ = het.SEE_yield(BN, Tev, γmax)
@@ -116,27 +123,26 @@ function test_electron_losses()
         νew = νiw / (1 - γ)
 
         params.cache.γ_SEE .= γ
-        params.cache.νew_momentum[1] = νew
-        params.cache.νew_momentum[2] = νew
-        params.cache.νew_momentum[3] = 0.0
-        params.cache.νew_momentum[4] = 0.0
-        params.cache.radial_loss_frequency[1:4] .= νew
+        params.cache.νew_momentum[1:idx_in] .= νew
+        params.cache.νew_momentum[(idx_in + 1):end] .= 0.0
+        params.cache.radial_loss_frequency[:] .= νew
 
-        Iew = het.wall_electron_current(sheath_model, params, 2)
+        Iew = het.wall_electron_current(sheath_model, params, idx_in)
         @test Iew ≈ νew * het.e * V_cell * ne
 
-        @test het.freq_electron_wall(sheath_model, params, 2) *
+        @test het.freq_electron_wall(sheath_model, params, idx_in) *
             het.linear_transition(
-            grid.cell_centers[2], L_ch, config.transition_length, 1.0, 0.0,
+            grid.cell_centers[idx_in], L_ch, config.transition_length, 1.0, 0.0,
         ) ≈ νew
-        @test het.freq_electron_wall(sheath_model, params, 3) *
+
+        @test het.freq_electron_wall(sheath_model, params, idx_out) *
             het.linear_transition(
-            grid.cell_centers[3], L_ch, config.transition_length, 1.0, 0.0,
+            grid.cell_centers[idx_out], L_ch, config.transition_length, 1.0, 0.0,
         ) ≈ 0.0
 
         het.wall_power_loss!(arr, sheath_model, params)
-        @test arr[2] ≈ νew * (2 * Tev + (1 - γ) * Vs)
-        @test arr[4] ≈ 0.0
+        @test arr[idx_in] ≈ νew * (2 * Tev + (1 - γ) * Vs)
+        @test arr[idx_out] ≈ 0.0
     end
 end
 

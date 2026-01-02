@@ -11,6 +11,10 @@ function setup_simulation(
         error("LANDMARK configuration needs to use the LANDMARK thermal conductivity model.")
     end
 
+    # ================================================================================
+    # Allocate fluids, reactions, grid, and other arrays
+    # ================================================================================
+
     # We arrange the fluid containers in three different structures for convenience.
     # First, an array of (;continuity, isothermal) for each propellant species.
     # This is used in initialization and in computing boundary conditions.
@@ -25,7 +29,6 @@ function setup_simulation(
     # Finally, a single flat array of fluid containers, which we use for reaction calculations.
     fluid_array = vcat([[fluid.continuity..., fluid.isothermal...] for fluid in fluids_by_propellant]...)
     species = unique([fl.species for fl in fluid_array])
-
 
     # Load reactions and collisions either from file or generate from species list
     ei_reactions, excitation_reactions, electron_neutral_collisions = load_reactions(
@@ -44,6 +47,9 @@ function setup_simulation(
     grid = generate_grid(sim.grid, config.thruster.geometry, config.domain)
     cache = allocate_arrays(grid, config)
 
+    # ================================================================================
+    # Magnetic field setup
+    # ================================================================================
     # Load magnetic field
     thruster = config.thruster
     load_magnetic_field!(thruster.magnetic_field; include_dirs)
@@ -52,7 +58,19 @@ function setup_simulation(
     itp = LinearInterpolation(thruster.magnetic_field.z, thruster.magnetic_field.B)
     @. cache.B = itp(grid.cell_centers) * config.magnetic_field_scale
 
-    # make the adaptive timestep independent of input condition
+    # Fix magnetic field in ghost cells by extrapolating from domain
+    # TODO: add extrapolate option to LinearInterpolation to fix this
+    # 1. Get values at left and right edges
+    B_L, B_R = itp(config.domain[1]), itp(config.domain[2])
+
+    # 2. Extrapolate to ghost cells
+    cache.B[1] = B_L - (cache.B[2] - B_L)
+    cache.B[end] = B_R + (B_R - cache.B[end - 1])
+
+    # ================================================================================
+    # Timestep setup
+    # ================================================================================
+    # Make the adaptive timestep independent of input condition
     dt = sim.dt
     if sim.adaptive
         dt = 100 * eps() # small initial timestep to initialize everything
@@ -70,7 +88,9 @@ function setup_simulation(
 
     cache.dt .= dt
 
-    # Simulation parameters
+    # ================================================================================
+    # Setup simulation parameters
+    # ================================================================================
     # IMPORTANT: for effective precompilation, we do not include any types
     # in here that are non-concrete or likely to change between runs.
     # For instance, any method that accepts a Config{...} will be recompiled for
@@ -82,7 +102,6 @@ function setup_simulation(
     # values from `config` and reinserts them into params.
     params = (;
         # non-concretely-typed, changes based on run, requires recompilation
-        # TODO: is this true anymore?
         params_from_config(config)...,
         # concretely-typed except for PID controller, not too bad
         simulation = sim,
@@ -105,11 +124,14 @@ function setup_simulation(
         excitation_reactant_indices,
         electron_neutral_collisions,
         electron_neutral_indices,
-        min_Te = min(config.anode_Tev, config.cathode_Tev),
         fluid_containers,
         fluid_array,
         fluids_by_propellant,
     )
+
+    # ================================================================================
+    # Initialize solution
+    # ================================================================================
 
     # Initialize ion and electron variables
     initialize!(params, config)

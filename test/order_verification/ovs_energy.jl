@@ -97,7 +97,6 @@ function verify_energy(ncells; implicit_energy = 1.0, niters = 20000)
     )
 
     params = het.setup_simulation(config, simparams)
-    @reset params.min_Te = 0.01 * min(Te_L, Te_R)
     z_cell = params.grid.cell_centers
 
     # fill cache values
@@ -116,7 +115,7 @@ function verify_energy(ncells; implicit_energy = 1.0, niters = 20000)
     @. cache.pe = copy(nϵ_exact)
     @. cache.nϵ = copy(nϵ_exact)
 
-    dt = 8 / maximum(abs.(cache.ue)) * (z_cell[2] - z_cell[1])
+    dt = 4 / maximum(abs.(cache.ue)) * (z_cell[2] - z_cell[1])
     @reset params.cache = cache
 
     solve_energy!(params, config, niters, dt)

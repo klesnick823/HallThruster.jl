@@ -89,26 +89,28 @@ function initialize_heavy_species_default!(params; kwargs...)
     end
 
     # Compute the electron number density
+    params.cache.ne .= 0.0
     for fluid in params.fluid_array
-        @. params.cache.ne += fluid.species.Z * fluid.density
+        @. params.cache.ne += fluid.species.Z * fluid.density / fluid.species.element.m
     end
 
     return
 end
 
 function initialize_electrons_default!(params, anode_Tev, cathode_Tev, discharge_voltage; max_electron_temperature = -1.0)
-    (; grid, cache, min_Te, thruster) = params
+    (; grid, cache, thruster) = params
     L_ch = thruster.geometry.channel_length
-    z0 = grid.cell_centers[1]
-    z1 = grid.cell_centers[end]
+    z0 = grid.edges[1]
+    z1 = grid.edges[end]
 
     # Electron temperature
     Te_baseline(z) = lerp(z, z0, z1, anode_Tev, cathode_Tev)
+    base_Te = 0.5 * (anode_Tev + cathode_Tev)
     Te_max = max_electron_temperature > 0.0 ? max_electron_temperature : discharge_voltage / 10
     Te_width = L_ch / 3
 
     # Gaussian Te profile
-    energy_function(z) = 3 / 2 * (Te_baseline(z) + (Te_max - min_Te) * exp(-(((z - z0) - L_ch) / Te_width)^2))
+    energy_function(z) = 1.5 * (Te_baseline(z) + (Te_max - base_Te) * exp(-(((z - z0) - L_ch) / Te_width)^2))
 
     for (i, z) in enumerate(grid.cell_centers)
         cache.nϵ[i] = cache.ne[i] * energy_function(z)
@@ -124,6 +126,9 @@ function initialize!(params, config, init::DefaultInitialization)
 
     initialize_heavy_species_default!(params; discharge_voltage, anode_Tev, max_ion_density, min_ion_density)
     initialize_electrons_default!(params, anode_Tev, cathode_Tev, discharge_voltage; max_electron_temperature)
+    update_pressure!(params.cache.pe, params.cache.nϵ, config.LANDMARK)
+    update_pressure_gradient!(params.cache.∇pe, params.cache.pe, params.grid.cell_centers)
+
     return
 end
 
@@ -133,7 +138,7 @@ Initialize fluid containers and other plasma variables form a restart
 """
 function initialize_from_restart!(params, restart_file::String)
     # TODO: multiple propellants
-    restart = JSON3.read(read(restart_file))
+    restart = JSON.parse(read(restart_file))
 
     if haskey(restart, "output")
         restart = restart.output
@@ -163,7 +168,6 @@ function initialize_from_restart!(params, frame)
     nn = LinearInterpolation(frame.z, frame.nn .* mi).(z)
     params.fluid_containers.continuity[1].density .= nn
 
-    # TODO: use use fluid containers
     for Z in 1:min(ncharge, ncharge_restart)
         fluid = params.fluid_containers.isothermal[Z]
         fluid.density .= LinearInterpolation(frame.z, frame.ni[Z] .* mi).(z)

@@ -211,13 +211,15 @@ Boundary conditions
 ===============================================================================#
 
 function apply_left_boundary!(fluids, propellant, cache, anode_bc, ingestion_flow_rate)
-    Te_L = cache.Tev[1]
+    Te_L = 0.5 * (cache.Tev[2] + cache.Tev[1])
     Ti = propellant.ion_temperature_K
     mdot_a = propellant.flow_rate_kg_s
 
     # Add inlet neutral density
     # Add ingested mass flow rate at anode
     un = fluids.continuity[].const_velocity
+
+    # Expected neutral density at left edge (from injection)
     neutral_density = (mdot_a + ingestion_flow_rate) / cache.channel_area[1] / un
 
     bohm_factor = if anode_bc == :sheath
@@ -270,16 +272,23 @@ function apply_left_boundary!(fluids, propellant, cache, anode_bc, ingestion_flo
             # 3. Compute boundary density using J⁺ and J⁻ invariants
             boundary_density = exp(0.5 * (J⁺ - J⁻) / sound_speed)
 
-            # Compute boundary flux
+            # Compute boundary flux (flux at leftmost edge)
             boundary_flux = boundary_velocity * boundary_density
         end
 
+        # Add ions that have left back as neutrals (note: boundary_flux is negative)
         neutral_density -= boundary_flux / un
-        fluid.density[1] = boundary_density
-        fluid.momentum[1] = boundary_flux
+
+        # Extrapolate values to ghost cells
+        ghost_cell_density = 2 * boundary_density - fluid.density[2]
+        ghost_cell_momentum = 2 * boundary_flux - fluid.momentum[2]
+
+        fluid.density[1] = ghost_cell_density
+        fluid.momentum[1] = ghost_cell_momentum
     end
 
-    fluids.continuity[].density[1] = neutral_density
+    # Extrapolate neutral density from edge and interior to ghost cell
+    fluids.continuity[].density[1] = 2 * neutral_density - fluids.continuity[].density[2]
 
     return
 end

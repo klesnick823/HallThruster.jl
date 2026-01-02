@@ -23,3 +23,5 @@ landmark_*.png
 
 *.mod
 *.so
+.aider*
+_output.json
