@@ -14,7 +14,7 @@ HallThruster.jl has been used by professionals and student teams alike to conduc
 To install HallThruster.jl, you must first install Julia 1.10 or above from the [official Julia site](https://julialang.org/downloads/). We recommend using the latest Julia release when possible. Once installed, launch Julia and type `]` to enter the Pkg REPL. To install HallThruster.jl type
 
 ```julia
-(@v1.10) pkg> add https://github.com/UM-PEPL/HallThruster.jl
+(@v1.12) pkg> add https://github.com/UM-PEPL/HallThruster.jl
 ```
 
 This will install HallThruster.jl using Julia's package manager. For details on setting up and running Hall thruster simulations, see [the official documentation](https://UM-PEPL.github.io/HallThruster.jl/dev).
