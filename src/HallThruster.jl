@@ -7,6 +7,7 @@ using PrecompileTools: @compile_workload
 
 using JSON
 using OrderedCollections
+using TOML: TOML
 
 # path to the HallThruster directory
 const PACKAGE_ROOT = joinpath(splitpath(@__DIR__)[1:(end - 1)]...)
