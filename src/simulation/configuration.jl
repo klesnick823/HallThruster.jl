@@ -133,7 +133,7 @@ struct Config{A <: AnomalousTransportModel, TC <: ThermalConductivityModel, W <:
     """
     ionization_model::Symbol
     """
-    Model for excitation reactions. **Default:** `:Lookup`. 
+    Model for excitation reactions. **Default:** `:Lookup`.
     """
     excitation_model::Symbol
     """
@@ -145,7 +145,7 @@ struct Config{A <: AnomalousTransportModel, TC <: ThermalConductivityModel, W <:
     """
     source_heavy_species::S_HS
     """
-    Extra source term for electron energy equation. **Default:** `nothing`. 
+    Extra source term for electron energy equation. **Default:** `nothing`.
     """
     source_energy::S_E
 
