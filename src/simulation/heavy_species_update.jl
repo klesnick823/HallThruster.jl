@@ -308,19 +308,18 @@ function apply_left_boundary!(fluids, propellant, cache, anode_bc, ingestion_flo
             neutral_density -= boundary_flux / un
 
         else
-            # Negative ions: repelled by sheath
-            sound_speed = sqrt(kTi_J / mi)
-            boundary_velocity = 0.0
+            KE = 0.5 * mi * interior_velocity^2
+            barrier = abs(Z) * e * Vs
 
-            if interior_velocity >= 0.0
-                # Already flowing away from anode → Neumann
+            if KE >= barrier
+                # Ion reaches anode with reduced speed
+                KE_boundary = KE - barrier
+                boundary_velocity = -sqrt(2 * KE_boundary / mi)  # toward anode
                 boundary_density = interior_density
-                boundary_flux = interior_density * interior_velocity
+                boundary_flux = boundary_density * boundary_velocity
             else
-                # Would leave domain → clamp to zero velocity
-                J⁻ = interior_velocity - sound_speed * log(interior_density)
-                J⁺ = -J⁻
-                boundary_density = exp(0.5 * (J⁺ - J⁻) / sound_speed)
+                # Reflected
+                boundary_density = interior_density
                 boundary_flux = 0.0
             end
         end
